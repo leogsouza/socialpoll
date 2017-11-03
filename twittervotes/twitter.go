@@ -82,7 +82,7 @@ func makeRequest(req *http.Request, params url.Values) (*http.Response, error) {
 		setupTwitterAuth()
 		httpClient = &http.Client{
 			Transport: &http.Transport{
-				Dial: dial(),
+				Dial: dial,
 			},
 		}
 	})
@@ -139,9 +139,30 @@ func readFromTwitter(votes chan<- string) {
 				strings.ToLower(option),
 			) {
 				log.Println("vote:", option)
-				vites <- option
+				votes <- option
 			}
 		}
 	}
+}
 
+func startTwitterStream(stopchan <-chan struct{}, votes chan<- string) <-chan struct{} {
+	stoppedchan := make(chan struct{}, 1)
+	go func() {
+		defer func() {
+			stoppedchan <- struct{}{}
+		}()
+		for {
+			select {
+			case <-stopchan:
+				log.Println("stopping Twitter...")
+				return
+			default:
+				log.Println("Querying Twitter...")
+				readFromTwitter(votes)
+				log.Println("  (waiting)")
+				time.Sleep(10 * time.Second) // wait before reconnecting
+			}
+		}
+	}()
+	return stoppedchan
 }
