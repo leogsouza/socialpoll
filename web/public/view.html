@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>View Poll</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
+        crossorigin="anonymous">
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4"></div>
+            <div class="col-md-4">
+                <h1 data-field="title">...</h1>
+                <ul id="options"></ul>
+                <div id="chart"></div>
+                <div>
+                    <button class="btn btn-sm" id="delete">
+                        Delete this poll
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4"></div>
+        </div>
+    </div>
+    <script src="//www.google.com/jsapi"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js" integrity="sha384-cs/chFZiN24E4KMATLdqdvsezGxaGsi4hLGOzlXwp5UZB1LY//20VyM2taTB4QvJ"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js" integrity="sha384-uefMccjFJAIv6A+rW+L4AHf99KvxDjWSu1z9VI8SKNVmz4sk7buKt/6v9KI65qnm"
+        crossorigin="anonymous"></script>
+    <script>
+        google.load('visualization', '1.0', {'packages': ['corechart']});
+        google.setOnLoadCallback(function() {
+            $(function() {
+                const chart;
+                const poll = location.href.split("poll=")[1];
+                const update = function() {
+                    $.get("http://localhost:8080/"+poll+"/?key=my-key", null, null, "json")
+                        .done(function(polls) {
+                            let pollResult = polls[0];
+                            $('[data-field="title"').text(pollResult.title);
+                            $("#options").empty();
+                            for (let o in pollResult.results) {
+                                $("#options").append(
+                                    $("<li>").append(
+                                        $("<small>").addClass("label label default")
+                                        .text(pollResult.results[o]),
+                                        " ", o
+                                    )
+                                )
+                            }
+                            if (poll.results) {
+                                const data = new google.visualization.DataTable();
+                                data.addColumn("string", "Option");
+                                data.addColumn("number", "Votes");
+                                for (let o in poll.results) {
+                                    data.addRow([o, poll.results[o]])
+                                }
+                                if (!chart) {
+                                    chart = new google.visualization.PieChart(
+                                        document.getElementById('chart'));
+                                }
+                                chart.draw(data, {is3D: true});
+                            }
+                        }
+                    );
+                    window.setTimeout(update, 1000);
+                }
+                update();
+                $("#delete").click(function() {
+                    if (confirm("Sure?")) {
+                        $.ajax({
+                            url: "http://localhost:8080/" + poll + "?key=my-key",
+                            type: "DELETE"
+                        })
+                        .done(function() {
+                            location.href = "/";
+                        })
+                    }
+                });
+            });
+        });
+    </script>
+    
+</body>
+</html>
